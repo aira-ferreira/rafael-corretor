@@ -1,360 +1,3 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rafael Corretor - Controle de Vendas</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
-<style>
-  :root {
-    --bg: #000;
-    --bg2: #1a1a1a;
-    --white: #fff;
-    --muted: #a0a0a0;
-    --silver: #c0c0c0;
-    --border: rgba(255,255,255,0.08);
-    --green: #88ff88;
-    --red: #ff8888;
-    --radius: 20px;
-  }
-
-  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: 'Lato', sans-serif;
-    background: var(--bg);
-    color: var(--white);
-    min-height: 100vh;
-  }
-
-  /* ── HEADER ── */
-  header {
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    padding: 18px 24px;
-    display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; z-index: 10;
-  }
-
-  .logo { display: flex; align-items: center; gap: 12px; }
-  .logo h1 { font-family: 'Playfair Display', serif; font-size: 20px; }
-  .logo span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
-  #headerDate { font-size: 12px; color: #666; text-align: right; }
-
-  /* ── MAIN ── */
-  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 100px; }
-
-  .section-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 13px; color: var(--muted);
-    letter-spacing: 2px; text-transform: uppercase;
-    margin: 28px 0 14px;
-  }
-
-  /* ── KPIs ── */
-  .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  @media (max-width: 640px) { .kpi-grid { grid-template-columns: 1fr; } }
-
-  .kpi-card {
-    background: var(--bg2);
-    border-radius: var(--radius);
-    padding: 22px 20px;
-    border: 1px solid var(--border);
-    position: relative; overflow: hidden;
-    transition: border-color 0.2s;
-  }
-
-  .kpi-card:hover { border-color: rgba(255,255,255,0.15); }
-
-  .kpi-card::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    background: linear-gradient(90deg, #333, var(--silver));
-  }
-
-  .kpi-label { font-size: 11px; color: #888; letter-spacing: 0.5px; }
-  .kpi-value { font-family: 'Playfair Display', serif; font-size: 26px; margin-top: 8px; line-height: 1.2; }
-
-  /* ── ACTIONS ── */
-  .actions-bar { display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap; }
-
-  .btn-action {
-    padding: 10px 18px; border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.15);
-    background: var(--bg2); color: var(--white);
-    cursor: pointer; font-size: 13px; font-weight: 700;
-    transition: background 0.15s, border-color 0.15s;
-  }
-
-  .btn-action:hover { background: #2a2a2a; border-color: rgba(255,255,255,0.3); }
-  .btn-import { border-color: rgba(136,255,136,0.3); color: var(--green); }
-  .btn-import:hover { border-color: rgba(136,255,136,0.6); }
-
-  /* ── TABLE ── */
-  .table-wrap { background: var(--bg2); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
-
-  .table-header {
-    padding: 18px 20px; border-bottom: 1px solid var(--border);
-    display: flex; justify-content: space-between; align-items: center;
-    gap: 12px; flex-wrap: wrap;
-  }
-
-  .table-header h3 { font-family: 'Playfair Display', serif; font-size: 16px; }
-
-  .search-input {
-    border: 1px solid rgba(255,255,255,0.1); border-radius: 30px;
-    padding: 8px 16px; background: var(--bg); color: var(--white);
-    outline: none; transition: border-color 0.2s; min-width: 180px;
-  }
-
-  .search-input:focus { border-color: rgba(255,255,255,0.35); }
-
-  .table-scroll { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-
-  thead th {
-    padding: 12px 14px; text-align: left;
-    color: var(--muted); background: var(--bg);
-    font-weight: 700; letter-spacing: 0.5px; white-space: nowrap;
-  }
-
-  tbody tr { transition: background 0.15s; }
-  tbody tr:hover { background: rgba(255,255,255,0.03); }
-  tbody td { padding: 13px 14px; border-top: 1px solid var(--border); }
-
-  .empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
-  .empty-state div { font-size: 36px; margin-bottom: 10px; }
-  .empty-state p { font-size: 14px; }
-
-  .badge { padding: 3px 9px; border-radius: 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
-  .badge-tipo { background: rgba(255,255,255,0.1); color: var(--white); }
-
-  .profit-pos { color: var(--green); font-weight: 700; }
-  .profit-neg { color: var(--red); font-weight: 700; }
-
-  .btn-delete {
-    background: none; border: none; color: #555; cursor: pointer;
-    font-size: 14px; padding: 4px 6px; border-radius: 6px;
-    transition: color 0.15s, background 0.15s;
-  }
-  .btn-delete:hover { color: var(--red); background: rgba(255,136,136,0.1); }
-
-  /* ── FAB ── */
-  .fab {
-    position: fixed; bottom: 28px; right: 24px; z-index: 100;
-    background: var(--white); color: #000; border: none;
-    border-radius: 56px; padding: 16px 26px;
-    font-weight: 700; font-size: 14px; cursor: pointer;
-    box-shadow: 0 6px 24px rgba(255,255,255,0.15);
-    transition: transform 0.15s, box-shadow 0.15s;
-  }
-  .fab:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255,255,255,0.2); }
-  .fab:active { transform: translateY(0); }
-
-  /* ── MODAL ── */
-  .overlay {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.85); z-index: 200;
-    align-items: center; justify-content: center;
-    backdrop-filter: blur(6px); padding: 16px;
-  }
-  .overlay.open { display: flex; }
-
-  .modal {
-    background: var(--bg2); width: 100%; max-width: 520px;
-    padding: 30px; border-radius: var(--radius);
-    border: 1px solid rgba(255,255,255,0.15);
-    max-height: 90vh; overflow-y: auto;
-  }
-
-  .modal h2 { font-family: 'Playfair Display', serif; margin-bottom: 22px; }
-
-  .form-group { margin-bottom: 15px; display: flex; flex-direction: column; gap: 6px; }
-  .form-group label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-
-  .form-row { display: flex; gap: 10px; }
-  .form-row .form-group { flex: 1; }
-
-  /* Inputs base */
-  input, select, textarea {
-    padding: 12px; border-radius: 10px;
-    border: 1px solid #333; background: #000;
-    color: var(--white); font-size: 14px; font-family: 'Lato', sans-serif;
-    outline: none; transition: border-color 0.2s; width: 100%;
-  }
-  input:focus, select:focus { border-color: rgba(255,255,255,0.35); }
-  select option { background: #111; }
-
-  /* Moeda */
-  .input-currency-wrap { position: relative; }
-  .input-currency-wrap::before {
-    content: 'R$'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-    color: var(--muted); font-size: 13px; font-weight: 700; pointer-events: none;
-  }
-  .input-currency-wrap input { padding-left: 36px; text-align: right; }
-
-  /* Calendário */
-  input[type="date"] { cursor: pointer; color-scheme: dark; }
-  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
-
-  /* Divisor */
-  .form-divider { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 18px 0 14px; }
-  .form-section-label { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
-
-  .btn-save {
-    width: 100%; padding: 15px; background: var(--white); color: #000;
-    border: none; border-radius: 10px; font-weight: 700; font-size: 15px;
-    cursor: pointer; margin-top: 10px; transition: opacity 0.15s;
-  }
-  .btn-save:hover { opacity: 0.9; }
-
-  .btn-cancel {
-    width: 100%; background: none; color: var(--muted); border: none;
-    margin-top: 12px; cursor: pointer; font-size: 13px; padding: 8px; border-radius: 8px;
-    transition: color 0.15s;
-  }
-  .btn-cancel:hover { color: var(--white); }
-
-  /* Toast */
-  .toast {
-    position: fixed; top: 20px; right: 20px;
-    padding: 12px 20px; border-radius: 10px;
-    font-weight: 700; font-size: 13px;
-    display: none; z-index: 999;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-  }
-</style>
-</head>
-<body>
-
-<header>
-  <div class="logo">
-    <div>
-      <h1>Rafael</h1>
-      <span>Corretor de Imóveis</span>
-    </div>
-  </div>
-  <div id="headerDate"></div>
-</header>
-
-<main>
-  <p class="section-title">Resumo</p>
-
-  <div class="kpi-grid">
-    <div class="kpi-card">
-      <div class="kpi-label">💰 Lucro Acumulado</div>
-      <div class="kpi-value" id="kpiProfit">R$ 0,00</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">🏢 Tipo Mais Vendido</div>
-      <div class="kpi-value" id="kpiTopType">—</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">🕰️ Média Recebimento</div>
-      <div class="kpi-value" id="kpiAvgDays">— dias</div>
-    </div>
-  </div>
-
-  <div class="actions-bar">
-    <button class="btn-action" onclick="exportExcel()">📊 Exportar Excel</button>
-    <button class="btn-action btn-import" onclick="document.getElementById('importFile').click()">📥 Importar Excel (Backup)</button>
-    <input type="file" id="importFile" style="display:none" accept=".xlsx,.xls" onchange="importExcel(event)">
-  </div>
-
-  <div class="table-wrap">
-    <div class="table-header">
-      <h3>Histórico de Vendas</h3>
-      <input type="text" class="search-input" id="searchInput" placeholder="Buscar imóvel..." oninput="renderTable()">
-    </div>
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Imóvel</th>
-            <th>Tipo</th>
-            <th>Valor do Imóvel</th>
-            <th>Comissão</th>
-            <th>Gastos</th>
-            <th>Lucro</th>
-            <th>Data Venda</th>
-            <th>Data Receb.</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="salesTableBody"></tbody>
-      </table>
-    </div>
-  </div>
-</main>
-
-<button class="fab" onclick="openModal()">＋ Novo Negócio</button>
-
-<div class="overlay" id="overlay" onclick="handleOverlayClick(event)">
-  <div class="modal">
-    <h2>Novo Registro</h2>
-
-    <div class="form-group">
-      <label>Imóvel *</label>
-      <input type="text" id="fImovel" placeholder="Nome ou endereço">
-    </div>
-
-    <div class="form-group">
-      <label>Tipo *</label>
-      <select id="fTipo">
-        <option value="Apartamento">Apartamento</option>
-        <option value="Casa">Casa</option>
-        <option value="Terreno">Terreno</option>
-        <option value="Comercial">Comercial</option>
-      </select>
-    </div>
-
-    <hr class="form-divider">
-    <div class="form-section-label">Valores</div>
-
-    <div class="form-group">
-      <label>Valor do Imóvel (R$)</label>
-      <div class="input-currency-wrap">
-        <input type="text" id="fValorImovel" placeholder="0,00" inputmode="numeric" oninput="maskCurrency(this)">
-      </div>
-    </div>
-
-    <div class="form-row">
-      <div class="form-group">
-        <label>Comissão recebida (R$) *</label>
-        <div class="input-currency-wrap">
-          <input type="text" id="fComissao" placeholder="0,00" inputmode="numeric" oninput="maskCurrency(this)">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Gastos (R$)</label>
-        <div class="input-currency-wrap">
-          <input type="text" id="fGastos" placeholder="0,00" inputmode="numeric" oninput="maskCurrency(this)">
-        </div>
-      </div>
-    </div>
-
-    <hr class="form-divider">
-    <div class="form-section-label">Datas</div>
-
-    <div class="form-row">
-      <div class="form-group">
-        <label>Data da Venda</label>
-        <input type="date" id="fDataVenda">
-      </div>
-      <div class="form-group">
-        <label>Data do Receb.</label>
-        <input type="date" id="fDataReceb">
-      </div>
-    </div>
-
-    <button class="btn-save" onclick="saveSale()">Salvar Negócio</button>
-    <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-  </div>
-</div>
-
-<div id="toast" class="toast"></div>
-
 <script>
   const STORAGE_KEY = 'rafaelSalesV2';
   let sales = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -366,6 +9,7 @@
 
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
+  // Inicialização
   calcKPIs();
   renderTable();
 
@@ -386,7 +30,8 @@
 
   function parseCurrency(str) {
     if (!str) return 0;
-    return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
+    // Remove pontos de milhar e troca vírgula por ponto para o JS entender como número
+    return parseFloat(str.toString().replace(/\./g, '').replace(',', '.')) || 0;
   }
 
   // ── MODAL ──
@@ -420,11 +65,23 @@
     const dataReceb   = document.getElementById('fDataReceb').value;
 
     if (!imovel)   { showToast('⚠️ Preencha o nome do imóvel', true); document.getElementById('fImovel').focus(); return; }
-    if (!comissao) { showToast('⚠️ Preencha o valor da comissão', true); document.getElementById('fComissao').focus(); return; }
-    if (dataVenda && dataReceb && dataReceb < dataVenda) { showToast('⚠️ Data de recebimento anterior à venda', true); return; }
+    if (!comissao && comissao !== 0) { showToast('⚠️ Preencha o valor da comissão', true); document.getElementById('fComissao').focus(); return; }
 
-    sales.push({ id: Date.now(), imovel, tipo, valorImovel, comissao, gastos, dataVenda, dataReceb });
-    persistSales(); calcKPIs(); renderTable(); closeModal();
+    sales.push({ 
+      id: Date.now(), 
+      imovel, 
+      tipo, 
+      valorImovel, 
+      comissao, 
+      gastos, 
+      dataVenda, 
+      dataReceb 
+    });
+
+    persistSales(); 
+    calcKPIs(); 
+    renderTable(); 
+    closeModal();
     showToast('✅ Negócio salvo!');
   }
 
@@ -453,10 +110,11 @@
     }
 
     tbody.innerHTML = filtered.map(s => {
-      // compatibilidade com registros antigos (campo valorVenda)
-      const comissao = s.comissao ?? s.valorVenda ?? 0;
+      // Cálculo do lucro individual: Comissão - Gastos
+      const comissao = s.comissao ?? 0;
       const gastos   = s.gastos ?? 0;
       const lucro    = comissao - gastos;
+
       return `<tr>
         <td><strong>${escHtml(s.imovel)}</strong></td>
         <td><span class="badge badge-tipo">${escHtml(s.tipo)}</span></td>
@@ -481,16 +139,23 @@
       profitEl.textContent = 'R$ 0,00'; typeEl.textContent = '—'; avgEl.textContent = '— dias'; return;
     }
 
+    // AJUSTE AQUI: Soma (Comissão - Gastos) de todos os itens
     const totalLucro = sales.reduce((acc, s) => {
-      const comissao = s.comissao ?? s.valorVenda ?? 0;
-      return acc + comissao - (s.gastos ?? 0);
+      const comissao = s.comissao ?? 0;
+      const gastos   = s.gastos ?? 0;
+      return acc + (comissao - gastos);
     }, 0);
+    
     profitEl.textContent = fmt(totalLucro);
+    // Cor visual do KPI conforme o lucro (verde ou vermelho)
+    profitEl.className = totalLucro >= 0 ? 'kpi-value profit-pos' : 'kpi-value profit-neg';
 
+    // Tipo mais vendido
     const freq = new Map();
     sales.forEach(s => freq.set(s.tipo, (freq.get(s.tipo) || 0) + 1));
     typeEl.textContent = [...freq.entries()].reduce((a, b) => b[1] > a[1] ? b : a)[0];
 
+    // Média de recebimento
     const withDates = sales.filter(s => s.dataVenda && s.dataReceb && s.dataReceb >= s.dataVenda);
     if (withDates.length) {
       const avg = withDates.reduce((acc, s) =>
@@ -505,12 +170,13 @@
   function exportExcel() {
     if (!sales.length) { showToast('⚠️ Sem dados para exportar', true); return; }
     const rows = sales.map(s => {
-      const comissao = s.comissao ?? s.valorVenda ?? 0;
+      const comissao = s.comissao ?? 0;
+      const gastos   = s.gastos ?? 0;
       return {
         Imovel: s.imovel, Tipo: s.tipo,
         Valor_Imovel: s.valorImovel || 0,
-        Comissao: comissao, Gastos: s.gastos || 0,
-        Lucro: comissao - (s.gastos || 0),
+        Comissao: comissao, Gastos: gastos,
+        Lucro: comissao - gastos,
         Data_Venda: s.dataVenda || '', Data_Receb: s.dataReceb || ''
       };
     });
@@ -537,7 +203,7 @@
           imovel:      String(item.Imovel || '').trim(),
           tipo:        String(item.Tipo || 'Outro').trim(),
           valorImovel: parseFloat(item.Valor_Imovel) || 0,
-          comissao:    parseFloat(item.Comissao ?? item.Venda) || 0,
+          comissao:    parseFloat(item.Comissao) || 0,
           gastos:      parseFloat(item.Gastos) || 0,
           dataVenda:   item.Data_Venda || '',
           dataReceb:   item.Data_Receb || ''
@@ -572,5 +238,3 @@
     toastTimer = setTimeout(() => { t.style.display = 'none'; }, 3000);
   }
 </script>
-</body>
-</html>
