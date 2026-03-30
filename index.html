@@ -1,19 +1,320 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rafael Corretor - Controle de Vendas</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+  :root {
+    --bg: #000;
+    --bg2: #1a1a1a;
+    --white: #fff;
+    --muted: #a0a0a0;
+    --silver: #c0c0c0;
+    --border: rgba(255,255,255,0.08);
+    --green: #88ff88;
+    --red: #ff8888;
+    --radius: 20px;
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Lato', sans-serif;
+    background: var(--bg);
+    color: var(--white);
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo h1 { font-family: 'Playfair Display', serif; font-size: 20px; }
+  .logo span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  #headerDate { font-size: 12px; color: #666; text-align: right; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 100px; }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 13px; color: var(--muted);
+    letter-spacing: 2px; text-transform: uppercase;
+    margin: 28px 0 14px;
+  }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 640px) { .kpi-grid { grid-template-columns: 1fr; } }
+
+  .kpi-card {
+    background: var(--bg2);
+    border-radius: var(--radius);
+    padding: 22px 20px;
+    border: 1px solid var(--border);
+    position: relative; overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, #333, var(--silver));
+  }
+
+  .kpi-label { font-size: 11px; color: #888; letter-spacing: 0.5px; }
+  .kpi-value { font-family: 'Playfair Display', serif; font-size: 26px; margin-top: 8px; line-height: 1.2; }
+
+  .actions-bar { display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap; }
+
+  .btn-action {
+    padding: 10px 18px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: var(--bg2); color: var(--white);
+    cursor: pointer; font-size: 13px; font-weight: 700;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .btn-action:hover { background: #2a2a2a; border-color: rgba(255,255,255,0.3); }
+  .btn-import { border-color: rgba(136,255,136,0.3); color: var(--green); }
+
+  .table-wrap { background: var(--bg2); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+
+  .table-header {
+    padding: 18px 20px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; flex-wrap: wrap;
+  }
+
+  .table-header h3 { font-family: 'Playfair Display', serif; font-size: 16px; }
+
+  .search-input {
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 30px;
+    padding: 8px 16px; background: var(--bg); color: var(--white);
+    outline: none; transition: border-color 0.2s; min-width: 180px;
+  }
+
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+  thead th {
+    padding: 12px 14px; text-align: left;
+    color: var(--muted); background: var(--bg);
+    font-weight: 700; letter-spacing: 0.5px; white-space: nowrap;
+  }
+
+  tbody td { padding: 13px 14px; border-top: 1px solid var(--border); }
+
+  .empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
+
+  .badge { padding: 3px 9px; border-radius: 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+  .badge-tipo { background: rgba(255,255,255,0.1); color: var(--white); }
+
+  .profit-pos { color: var(--green) !important; font-weight: 700; }
+  .profit-neg { color: var(--red) !important; font-weight: 700; }
+
+  .btn-delete {
+    background: none; border: none; color: #555; cursor: pointer;
+    font-size: 14px; padding: 4px 6px; border-radius: 6px;
+    transition: color 0.15s;
+  }
+  .btn-delete:hover { color: var(--red); background: rgba(255,136,136,0.1); }
+
+  .fab {
+    position: fixed; bottom: 28px; right: 24px; z-index: 100;
+    background: var(--white); color: #000; border: none;
+    border-radius: 56px; padding: 16px 26px;
+    font-weight: 700; font-size: 14px; cursor: pointer;
+    box-shadow: 0 6px 24px rgba(255,255,255,0.15);
+  }
+
+  .overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85); z-index: 200;
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(6px); padding: 16px;
+  }
+  .overlay.open { display: flex; }
+
+  .modal {
+    background: var(--bg2); width: 100%; max-width: 520px;
+    padding: 30px; border-radius: var(--radius);
+    border: 1px solid rgba(255,255,255,0.15);
+    max-height: 90vh; overflow-y: auto;
+  }
+
+  .modal h2 { font-family: 'Playfair Display', serif; margin-bottom: 22px; }
+
+  .form-group { margin-bottom: 15px; display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .form-row { display: flex; gap: 10px; }
+  .form-row .form-group { flex: 1; }
+
+  input, select {
+    padding: 12px; border-radius: 10px;
+    border: 1px solid #333; background: #000;
+    color: var(--white); font-size: 14px; width: 100%;
+    outline: none;
+  }
+
+  .input-currency-wrap { position: relative; }
+  .input-currency-wrap::before {
+    content: 'R$'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    color: var(--muted); font-size: 13px; font-weight: 700;
+  }
+  .input-currency-wrap input { padding-left: 36px; text-align: right; }
+
+  .btn-save {
+    width: 100%; padding: 15px; background: var(--white); color: #000;
+    border: none; border-radius: 10px; font-weight: 700; font-size: 15px;
+    cursor: pointer; margin-top: 10px;
+  }
+
+  .btn-cancel {
+    width: 100%; background: none; color: var(--muted); border: none;
+    margin-top: 12px; cursor: pointer; font-size: 13px;
+  }
+
+  .toast {
+    position: fixed; top: 20px; right: 20px;
+    padding: 12px 20px; border-radius: 10px;
+    font-weight: 700; font-size: 13px;
+    display: none; z-index: 999;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div>
+      <h1>Rafael</h1>
+      <span>Corretor de Imóveis</span>
+    </div>
+  </div>
+  <div id="headerDate"></div>
+</header>
+
+<main>
+  <p class="section-title">Resumo</p>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">💰 Lucro Acumulado</div>
+      <div class="kpi-value" id="kpiProfit">R$ 0,00</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">🏢 Tipo Mais Vendido</div>
+      <div class="kpi-value" id="kpiTopType">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">🕰️ Média Recebimento</div>
+      <div class="kpi-value" id="kpiAvgDays">— dias</div>
+    </div>
+  </div>
+
+  <div class="actions-bar">
+    <button class="btn-action" onclick="exportExcel()">📊 Exportar Excel</button>
+    <button class="btn-action btn-import" onclick="document.getElementById('importFile').click()">📥 Importar Excel</button>
+    <input type="file" id="importFile" style="display:none" accept=".xlsx,.xls" onchange="importExcel(event)">
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-header">
+      <h3>Histórico de Vendas</h3>
+      <input type="text" class="search-input" id="searchInput" placeholder="Buscar imóvel..." oninput="renderTable()">
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Imóvel</th>
+            <th>Tipo</th>
+            <th>Valor Imóvel</th>
+            <th>Comissão</th>
+            <th>Gastos</th>
+            <th>Lucro</th>
+            <th>Venda</th>
+            <th>Receb.</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="salesTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<button class="fab" onclick="openModal()">＋ Novo Negócio</button>
+
+<div class="overlay" id="overlay" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <h2>Novo Registro</h2>
+    <div class="form-group">
+      <label>Imóvel *</label>
+      <input type="text" id="fImovel" placeholder="Nome ou endereço">
+    </div>
+    <div class="form-group">
+      <label>Tipo *</label>
+      <select id="fTipo">
+        <option value="Apartamento">Apartamento</option>
+        <option value="Casa">Casa</option>
+        <option value="Terreno">Terreno</option>
+        <option value="Comercial">Comercial</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Valor do Imóvel (R$)</label>
+      <div class="input-currency-wrap">
+        <input type="text" id="fValorImovel" placeholder="0,00" oninput="maskCurrency(this)">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Comissão (R$) *</label>
+        <div class="input-currency-wrap">
+          <input type="text" id="fComissao" placeholder="0,00" oninput="maskCurrency(this)">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Gastos (R$)</label>
+        <div class="input-currency-wrap">
+          <input type="text" id="fGastos" placeholder="0,00" oninput="maskCurrency(this)">
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Data Venda</label>
+        <input type="date" id="fDataVenda">
+      </div>
+      <div class="form-group">
+        <label>Data Receb.</label>
+        <input type="date" id="fDataReceb">
+      </div>
+    </div>
+    <button class="btn-save" onclick="saveSale()">Salvar Negócio</button>
+    <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
 <script>
   const STORAGE_KEY = 'rafaelSalesV2';
   let sales = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 
   function persistSales() { localStorage.setItem(STORAGE_KEY, JSON.stringify(sales)); }
 
-  document.getElementById('headerDate').textContent =
-    new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+  document.getElementById('headerDate').textContent = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-  // Inicialização
-  calcKPIs();
-  renderTable();
-
-  // ── MÁSCARA DE MOEDA ──
   function maskCurrency(input) {
     let v = input.value.replace(/\D/g, '');
     v = (parseInt(v, 10) || 0).toString();
@@ -30,211 +331,92 @@
 
   function parseCurrency(str) {
     if (!str) return 0;
-    // Remove pontos de milhar e troca vírgula por ponto para o JS entender como número
     return parseFloat(str.toString().replace(/\./g, '').replace(',', '.')) || 0;
   }
 
-  // ── MODAL ──
   function openModal() {
-    clearForm();
+    document.getElementById('fImovel').value = '';
+    document.getElementById('fValorImovel').value = '';
+    document.getElementById('fComissao').value = '';
+    document.getElementById('fGastos').value = '';
     document.getElementById('overlay').classList.add('open');
-    setTimeout(() => document.getElementById('fImovel').focus(), 100);
   }
 
   function closeModal() { document.getElementById('overlay').classList.remove('open'); }
+  function handleOverlayClick(e) { if (e.target.id === 'overlay') closeModal(); }
 
-  function handleOverlayClick(e) {
-    if (e.target === document.getElementById('overlay')) closeModal();
-  }
-
-  function clearForm() {
-    ['fImovel','fValorImovel','fComissao','fGastos','fDataVenda','fDataReceb'].forEach(id => {
-      document.getElementById(id).value = '';
-    });
-    document.getElementById('fTipo').selectedIndex = 0;
-  }
-
-  // ── SAVE ──
   function saveSale() {
-    const imovel      = document.getElementById('fImovel').value.trim();
-    const tipo        = document.getElementById('fTipo').value;
+    const imovel = document.getElementById('fImovel').value.trim();
+    const tipo = document.getElementById('fTipo').value;
     const valorImovel = parseCurrency(document.getElementById('fValorImovel').value);
-    const comissao    = parseCurrency(document.getElementById('fComissao').value);
-    const gastos      = parseCurrency(document.getElementById('fGastos').value);
-    const dataVenda   = document.getElementById('fDataVenda').value;
-    const dataReceb   = document.getElementById('fDataReceb').value;
+    const comissao = parseCurrency(document.getElementById('fComissao').value);
+    const gastos = parseCurrency(document.getElementById('fGastos').value);
+    const dataVenda = document.getElementById('fDataVenda').value;
+    const dataReceb = document.getElementById('fDataReceb').value;
 
-    if (!imovel)   { showToast('⚠️ Preencha o nome do imóvel', true); document.getElementById('fImovel').focus(); return; }
-    if (!comissao && comissao !== 0) { showToast('⚠️ Preencha o valor da comissão', true); document.getElementById('fComissao').focus(); return; }
+    if (!imovel || !comissao) { showToast('⚠️ Preencha os campos obrigatórios', true); return; }
 
-    sales.push({ 
-      id: Date.now(), 
-      imovel, 
-      tipo, 
-      valorImovel, 
-      comissao, 
-      gastos, 
-      dataVenda, 
-      dataReceb 
-    });
-
-    persistSales(); 
-    calcKPIs(); 
-    renderTable(); 
-    closeModal();
-    showToast('✅ Negócio salvo!');
+    sales.push({ id: Date.now(), imovel, tipo, valorImovel, comissao, gastos, dataVenda, dataReceb });
+    persistSales(); renderTable(); calcKPIs(); closeModal();
+    showToast('✅ Salvo com sucesso!');
   }
 
-  // ── DELETE ──
   function deleteSale(id) {
-    if (!confirm('Excluir este registro?')) return;
+    if (!confirm('Excluir?')) return;
     sales = sales.filter(s => s.id !== id);
-    persistSales(); calcKPIs(); renderTable();
-    showToast('🗑️ Registro excluído');
+    persistSales(); renderTable(); calcKPIs();
   }
 
-  // ── TABLE ──
   function renderTable() {
-    const q = document.getElementById('searchInput').value.toLowerCase().trim();
-    const filtered = sales.filter(s => s.imovel.toLowerCase().includes(q)).slice().reverse();
+    const q = document.getElementById('searchInput').value.toLowerCase();
     const tbody = document.getElementById('salesTableBody');
-
-    if (!filtered.length) {
-      tbody.innerHTML = `<tr><td colspan="9">
-        <div class="empty-state">
-          <div>🏘️</div>
-          <p>${q ? `Nenhum imóvel para "${escHtml(q)}"` : 'Nenhuma venda registrada ainda'}</p>
-        </div>
-      </td></tr>`;
-      return;
-    }
+    const filtered = sales.filter(s => s.imovel.toLowerCase().includes(q)).slice().reverse();
 
     tbody.innerHTML = filtered.map(s => {
-      // Cálculo do lucro individual: Comissão - Gastos
-      const comissao = s.comissao ?? 0;
-      const gastos   = s.gastos ?? 0;
-      const lucro    = comissao - gastos;
-
+      const lucro = (s.comissao || 0) - (s.gastos || 0);
       return `<tr>
-        <td><strong>${escHtml(s.imovel)}</strong></td>
-        <td><span class="badge badge-tipo">${escHtml(s.tipo)}</span></td>
-        <td style="color:var(--muted)">${s.valorImovel ? fmt(s.valorImovel) : '—'}</td>
-        <td>${fmt(comissao)}</td>
-        <td>${gastos > 0 ? fmt(gastos) : '—'}</td>
+        <td><strong>${s.imovel}</strong></td>
+        <td><span class="badge badge-tipo">${s.tipo}</span></td>
+        <td>${fmt(s.valorImovel)}</td>
+        <td>${fmt(s.comissao)}</td>
+        <td>${fmt(s.gastos)}</td>
         <td class="${lucro >= 0 ? 'profit-pos' : 'profit-neg'}">${fmt(lucro)}</td>
         <td>${fmtDate(s.dataVenda)}</td>
-        <td>${s.dataReceb ? fmtDate(s.dataReceb) : '<span style="color:#555">Pendente</span>'}</td>
-        <td><button class="btn-delete" onclick="deleteSale(${s.id})" title="Excluir">✕</button></td>
+        <td>${s.dataReceb ? fmtDate(s.dataReceb) : 'Pendente'}</td>
+        <td><button class="btn-delete" onclick="deleteSale(${s.id})">✕</button></td>
       </tr>`;
     }).join('');
   }
 
-  // ── KPIs ──
   function calcKPIs() {
     const profitEl = document.getElementById('kpiProfit');
-    const typeEl   = document.getElementById('kpiTopType');
-    const avgEl    = document.getElementById('kpiAvgDays');
+    if (!sales.length) { profitEl.textContent = 'R$ 0,00'; return; }
 
-    if (!sales.length) {
-      profitEl.textContent = 'R$ 0,00'; typeEl.textContent = '—'; avgEl.textContent = '— dias'; return;
-    }
-
-    // AJUSTE AQUI: Soma (Comissão - Gastos) de todos os itens
-    const totalLucro = sales.reduce((acc, s) => {
-      const comissao = s.comissao ?? 0;
-      const gastos   = s.gastos ?? 0;
-      return acc + (comissao - gastos);
-    }, 0);
-    
+    const totalLucro = sales.reduce((acc, s) => acc + (s.comissao || 0) - (s.gastos || 0), 0);
     profitEl.textContent = fmt(totalLucro);
-    // Cor visual do KPI conforme o lucro (verde ou vermelho)
     profitEl.className = totalLucro >= 0 ? 'kpi-value profit-pos' : 'kpi-value profit-neg';
 
     // Tipo mais vendido
-    const freq = new Map();
-    sales.forEach(s => freq.set(s.tipo, (freq.get(s.tipo) || 0) + 1));
-    typeEl.textContent = [...freq.entries()].reduce((a, b) => b[1] > a[1] ? b : a)[0];
-
-    // Média de recebimento
-    const withDates = sales.filter(s => s.dataVenda && s.dataReceb && s.dataReceb >= s.dataVenda);
-    if (withDates.length) {
-      const avg = withDates.reduce((acc, s) =>
-        acc + (new Date(s.dataReceb) - new Date(s.dataVenda)) / 86400000, 0) / withDates.length;
-      avgEl.textContent = Math.round(avg) + ' dias';
-    } else {
-      avgEl.textContent = '— dias';
-    }
+    const freq = {};
+    sales.forEach(s => freq[s.tipo] = (freq[s.tipo] || 0) + 1);
+    const top = Object.entries(freq).sort((a,b) => b[1] - a[1])[0];
+    document.getElementById('kpiTopType').textContent = top ? top[0] : '—';
   }
 
-  // ── EXPORTAR ──
-  function exportExcel() {
-    if (!sales.length) { showToast('⚠️ Sem dados para exportar', true); return; }
-    const rows = sales.map(s => {
-      const comissao = s.comissao ?? 0;
-      const gastos   = s.gastos ?? 0;
-      return {
-        Imovel: s.imovel, Tipo: s.tipo,
-        Valor_Imovel: s.valorImovel || 0,
-        Comissao: comissao, Gastos: gastos,
-        Lucro: comissao - gastos,
-        Data_Venda: s.dataVenda || '', Data_Receb: s.dataReceb || ''
-      };
-    });
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Vendas');
-    XLSX.writeFile(wb, `Vendas_Rafael_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.xlsx`);
-    showToast('📊 Excel exportado!');
-  }
-
-  // ── IMPORTAR ──
-  function importExcel(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(ev) {
-      try {
-        const wb   = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
-        const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-        if (!json.length) { showToast('⚠️ Planilha vazia', true); return; }
-
-        const imported = json.map((item, i) => ({
-          id: Date.now() + i,
-          imovel:      String(item.Imovel || '').trim(),
-          tipo:        String(item.Tipo || 'Outro').trim(),
-          valorImovel: parseFloat(item.Valor_Imovel) || 0,
-          comissao:    parseFloat(item.Comissao) || 0,
-          gastos:      parseFloat(item.Gastos) || 0,
-          dataVenda:   item.Data_Venda || '',
-          dataReceb:   item.Data_Receb || ''
-        })).filter(s => s.imovel);
-
-        if (!imported.length) { showToast('⚠️ Nenhum registro válido', true); return; }
-        if (!confirm(`Importar ${imported.length} registro(s)?`)) return;
-        sales = [...sales, ...imported];
-        persistSales(); calcKPIs(); renderTable();
-        showToast(`✅ ${imported.length} registros importados!`);
-      } catch(err) { showToast('❌ Erro ao ler arquivo', true); console.error(err); }
-    };
-    reader.readAsArrayBuffer(file);
-    e.target.value = '';
-  }
-
-  // ── HELPERS ──
   function fmt(v) { return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0); }
   function fmtDate(d) { if(!d) return '—'; const [y,m,day]=d.split('-'); return `${day}/${m}/${y}`; }
-  function escHtml(str) {
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
 
-  let toastTimer;
-  function showToast(msg, isError=false) {
+  function showToast(msg, isError) {
     const t = document.getElementById('toast');
     t.textContent = msg; t.style.display = 'block';
-    t.style.background = isError ? '#1a1a1a' : '#fff';
-    t.style.color      = isError ? '#ff8888' : '#000';
-    t.style.border     = isError ? '1px solid rgba(255,136,136,0.3)' : 'none';
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { t.style.display = 'none'; }, 3000);
+    t.style.background = isError ? '#ff8888' : '#fff';
+    t.style.color = '#000';
+    setTimeout(() => t.style.display = 'none', 3000);
   }
+
+  // Inicializa
+  renderTable();
+  calcKPIs();
 </script>
+</body>
+</html>
